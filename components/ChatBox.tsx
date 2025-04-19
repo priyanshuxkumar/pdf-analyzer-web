@@ -1,13 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-
 import { ArrowUp, Menu, PenSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "./ui/textarea";
-import { useRef, useState } from "react";
-import PDFViewer from "./PdfViewer";
+import { useEffect, useRef, useState } from "react";
 import { ChatResponseWait } from "./WaitChatResponse";
+import PDFViewer from "./PdfViewer";
+import ReactMarkdown from "react-markdown";
 
 type MessageRole = "user" | "assistant";
 
@@ -26,11 +26,17 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
   const [fileUploading, setFileUploading] = useState<boolean>(false);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && inputValue) {
       e.preventDefault();
       handleSendQuery(e as unknown as React.FormEvent<HTMLFormElement>);
     }
   };
+
+  // Load old messages
+  useEffect(() => {
+    const cacheData = JSON.parse(localStorage.getItem("messages") || "[]") ;
+    setMessages(cacheData)
+  },[]);
 
   const header = (
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
@@ -50,13 +56,15 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
           key={index}
           data-role={message.role}
           className={cn(
-            "max-w-[80%] px-4 py-2 rounded-2xl text-base data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-gray-100 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white",
+            "max-w-[80%] px-4 py-2 rounded-2xl text-base data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-transparent data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white",
             message.role === "user"
               ? "bg-white border border-gray-200 rounded-br-none"
               : "text-gray-900"
           )}
         >
-          {message.content}
+          <ReactMarkdown>
+            {message.content}
+          </ReactMarkdown>
         </div>
       ))}
       { isFetching && <ChatResponseWait/> }
@@ -97,11 +105,18 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
 
   const handleSendQuery = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsStreaming(true);
-    setIsFetching(true);
     const user_id = localStorage.getItem("user_id") as string;
     if (!user_id || inputValue.trim() == "") return;
-    setMessages((prev) => [...prev, { content: inputValue, role: "user" }]);
+
+    setIsStreaming(true);
+    setIsFetching(true);
+
+    const userMsg = { content: inputValue, role: "user" };
+    setMessages((prev : MessagesProp[]) => [...prev, userMsg] as MessagesProp[]);
+
+    const prevData = JSON.parse(localStorage.getItem("messages") || "[]");
+    const newData = [...prevData, userMsg];
+    localStorage.setItem("messages", JSON.stringify(newData));
     setInputValue("");
     try {
       const response = await fetch("http://localhost:8000/api/chat", {
@@ -116,11 +131,13 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
       });
       const data = await response.json();
       if (data.status === "success") {
-        console.log(data);
-        setMessages((prev) => [
-          ...prev,
-          { content: data?.content, role: "assistant" },
-        ]);
+        const assistantMsg = { content : data?.content, role: "assistant" };
+        setMessages((prev : MessagesProp[]) => [...prev, assistantMsg] as MessagesProp[]);
+
+        // Update the localstorage messages -
+        const prevData = JSON.parse(localStorage.getItem("messages") || "[]");
+        const newData = [...prevData, assistantMsg];
+        localStorage.setItem("messages", JSON.stringify(newData));
       }
     } catch (err) {
       console.error(err);
@@ -152,12 +169,12 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
       </header>
       <main
         className={cn(
-          "flex-grow pb-32 pt-12 px-4 overflow-y-auto max-w-3xl mx-auto ring-none flex h-svh max-h-svh w-full flex-col items-stretch border-none",
+          "flex-grow pb-32 pt-12 px-2 overflow-y-auto max-w-3xl mx-auto ring-none flex h-svh max-h-svh w-full flex-col items-stretch border-none",
           className
         )}
         {...props}
       >
-        <div className="flex-1 content-center overflow-y-auto px-6">
+        <div className="flex-1 content-center overflow-y-auto px-2">
           {messages?.length ? messageList : header}
         </div>
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-50">
