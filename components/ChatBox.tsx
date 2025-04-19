@@ -169,16 +169,16 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
       </header>
       <main
         className={cn(
-          "flex-grow pb-32 pt-12 px-2 overflow-y-auto max-w-3xl mx-auto ring-none flex h-svh max-h-svh w-full flex-col items-stretch border-none",
+          "flex-grow pb-32 pt-12 px-2 overflow-y-auto max-w-4xl mx-auto ring-none flex h-svh max-h-svh w-full flex-col items-stretch border-none",
           className
         )}
         {...props}
       >
-        <div className="flex-1 content-center overflow-y-auto px-2">
+        <div className="flex-1 content-center overflow-y-auto pr-2">
           {messages?.length ? messageList : header}
         </div>
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-50">
-          <form onSubmit={handleSendQuery} className="max-w-3xl mx-auto">
+          <form onSubmit={handleSendQuery} className="max-w-4xl mx-auto">
             <div
               className={cn(
                 "relative w-full rounded-3xl border border-gray-200 bg-white px-3 py-4 cursor-text",
@@ -198,6 +198,7 @@ export function Chatbox({ className, ...props }: React.ComponentProps<"form">) {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  readOnly={isFetching || isStreaming}
                 />
               </div>
 
